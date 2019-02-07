@@ -2,8 +2,9 @@
 
 This is the Serverless plugin for AWS Lambda Layers which enables missing "latest" version tag
 
+![demo](/screenshot.png)
 
-## Instal
+## Install
 
 First, install package as development dependency.
 
