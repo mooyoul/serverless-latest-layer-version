@@ -1,0 +1,28 @@
+{
+  "name": "serverless-latest-layer-version",
+  "version": "1.0.0",
+  "description": "A serverless plugin that replaces 'latest' version tag to actual lambda layer version",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mooyoul/serverless-latest-layer-version.git"
+  },
+  "keywords": [
+    "serverless",
+    "tag",
+    "aws",
+    "lambda"
+  ],
+  "author": "MooYeol Prescott Lee <mooyoul@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/balmbees/serverless-latest-layer-version/issues"
+  },
+  "homepage": "https://github.com/balmbees/serverless-latest-layer-version#readme",
+  "dependencies": {
+    "aws-sdk": "^2.398.0"
+  }
+}
