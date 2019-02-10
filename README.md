@@ -4,6 +4,13 @@ This is the Serverless plugin for AWS Lambda Layers which enables missing "lates
 
 ![demo](/screenshot.png)
 
+## Why?
+
+![limits](/limit.png)
+
+Unlike invoking Lambda function. Lambda Layer does not support `$LATEST` version tag.
+
+
 ## Install
 
 First, install package as development dependency.
