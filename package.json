@@ -19,9 +19,9 @@
   "author": "MooYeol Prescott Lee <mooyoul@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/balmbees/serverless-latest-layer-version/issues"
+    "url": "https://github.com/mooyoul/serverless-latest-layer-version/issues"
   },
-  "homepage": "https://github.com/balmbees/serverless-latest-layer-version#readme",
+  "homepage": "https://github.com/mooyoul/serverless-latest-layer-version#readme",
   "dependencies": {
     "aws-sdk": "^2.398.0"
   },
