@@ -55,7 +55,7 @@ class ServerlessPlugin {
       const layerRegion = arnParts[3];
       const layerVersion = arnParts[7];
 
-      if (layerVersion.toLowerCase() === 'latest') {
+      if (layerVersion.toLowerCase() === 'latest' || layerVersion.toLowerCase() === '$latest') {
         const latestVersionARN = await (async () => {
           const layerNameArn = arnParts.slice(0, -1).join(":");
           if (this.cache.has(layerNameArn)) {
