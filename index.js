@@ -35,13 +35,15 @@ class ServerlessPlugin {
       if (Array.isArray(functionDefLayers)) {
         await this.processLayerARNList(functionDefLayers);
       }
+      
+      if (service.hasOwnProperty('Resources')) {
+        const logicalId = this.provider.naming.getLambdaLogicalId(functionName);
+        const resourceDef = service.resources.Resources[logicalId];
+        const resourceDefLayers = resourceDef && resourceDef.Properties && resourceDef.Properties.Layers;
 
-      const logicalId = this.provider.naming.getLambdaLogicalId(functionName);
-      const resourceDef = service.resources.Resources[logicalId];
-      const resourceDefLayers = resourceDef && resourceDef.Properties && resourceDef.Properties.Layers;
-
-      if (Array.isArray(resourceDefLayers)) {
-        await this.processLayerARNList(resourceDefLayers);
+        if (Array.isArray(resourceDefLayers)) {
+          await this.processLayerARNList(resourceDefLayers);
+        }
       }
     }
   }
