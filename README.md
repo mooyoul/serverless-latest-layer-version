@@ -36,6 +36,17 @@ The plugin automatically replaces `latest` version tag to actual latest version 
 For example, if Previously specified layer arn is `arn:aws:lambda:us-east-1:800406105498:layer:nsolid-node-10:6`.
 replace that as `arn:aws:lambda:us-east-1:800406105498:layer:nsolid-node-10:latest`. That's it!
 
+## Changelog
+
+#### 1.0.3
+
+- Fixed a bug that cause plugin failure when there's no any `Resources` field exists on the `serverless.yml` (#1, Thanks to [@falaa](https://github.com/falaa))
+
+#### 1.0.2
+
+- Initial release
+
+
 ## License
 [MIT](LICENSE)
 
