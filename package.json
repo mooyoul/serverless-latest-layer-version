@@ -26,5 +26,23 @@
     "aws-sdk": "^2.591.0",
     "traverse": "^0.6.6"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@vingle/commitlint-preset": "1.0.3",
+    "husky": "3.1.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "commitlint": {
+    "extends": [
+      "@vingle/commitlint-preset"
+    ]
+  }
 }
