@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/mooyoul/serverless-latest-layer-version#readme",
   "dependencies": {
-    "aws-sdk": "^2.591.0"
+    "aws-sdk": "^2.591.0",
+    "traverse": "^0.6.6"
   },
   "devDependencies": {
     "np": "^4.0.2"

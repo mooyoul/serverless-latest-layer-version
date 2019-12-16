@@ -5,116 +5,171 @@
  */
 
 const { Lambda } = require('aws-sdk');
+const traverse = require('traverse');
 const util = require('util');
 
 class ServerlessPlugin {
   constructor(serverless, options) {
     this.serverless = serverless;
     this.options = options;
-    this.provider = this.serverless.getProvider(this.serverless.service.provider.name);
-    this.cache = new Map();
+    this.hooks = {
+      'after:aws:package:finalize:mergeCustomProviderResources': this.updateLayerVersion.bind(this),
+    };
+  }
 
-    const { service } = this.serverless;
+  async updateLayerVersion() {
+    const self = this;
 
-    if (service.provider.name === 'aws') {
-      this.hooks = {
-        'before:package:setupProviderConfiguration': this.beforeSetupProviderConfiguration.bind(this),
-      };
-    } else {
-      this.log('Detected non-aws environment. skipping...');
+    // Find All Lambda Layer associations from compiled CFN template
+    const layerAssociations = this.listLayerAssociations();
+
+    // Collect target Layer ARNs
+    const collectedLayerARNs = (() => {
+      const set = new Set();
+
+      for (const layerAssociation of layerAssociations) {
+        traverse(layerAssociation.layers).forEach(function (node) {
+          const matched = this.isLeaf
+            && typeof node === "string"
+            && /^arn:/i.test(node)
+            && /latest$/i.test(node);
+
+          if (matched) {
+            set.add(node.toLowerCase());
+          }
+        });
+      }
+
+      return set;
+    })();
+
+    // Resolve actual Layer ARNs
+    const resolvedLayerARNs = await (async () => {
+      const dict = new Map();
+
+      for (const collectedLayerArn of collectedLayerARNs) {
+        const version = await this.lookupLatestLayerVersionArn(collectedLayerArn);
+        dict.set(collectedLayerArn, version);
+      }
+
+      return dict;
+    })();
+
+    // Recursively replace layer ARNs
+    for (const layerAssociation of layerAssociations) {
+      traverse(layerAssociation.layers).forEach(function (node) {
+        const matched = this.isLeaf
+          && typeof node === "string"
+          && /^arn:/i.test(node)
+          && /latest$/i.test(node);
+
+        if (matched) {
+          const resolvedLayerArn = resolvedLayerARNs.get(node.toLowerCase());
+          if (resolvedLayerArn) {
+            this.update(resolvedLayerArn);
+            self.log("Resolved %s to %s", node, resolvedLayerArn);
+          } else {
+            self.log("Detected unknown Layer ARN %s. Please create a new issue to github.com/mooyoul/serverless-latest-layer-version", node);
+          }
+        }
+      });
     }
   }
 
-  async beforeSetupProviderConfiguration() {
-    const { service } = this.serverless;
+  listLayerAssociations() {
+    // Lookup compiled CFN template to support individual deployments
+    const compiledTemplate = this.serverless.service.provider.compiledCloudFormationTemplate;
 
+    const resources = compiledTemplate.Resources;
 
-    for (const functionName of Object.keys(service.functions)) {
-      const functionDef = service.functions[functionName];
-      const functionDefLayers = functionDef.layers;
-      if (Array.isArray(functionDefLayers)) {
-        await this.processLayerARNList(functionDefLayers);
-      }
-      
-      if (service.hasOwnProperty('Resources')) {
-        const logicalId = this.provider.naming.getLambdaLogicalId(functionName);
-        const resourceDef = service.resources.Resources[logicalId];
-        const resourceDefLayers = resourceDef && resourceDef.Properties && resourceDef.Properties.Layers;
+    return Object.keys(resources).reduce((collection, key) => {
+      const resource = resources[key];
 
-        if (Array.isArray(resourceDefLayers)) {
-          await this.processLayerARNList(resourceDefLayers);
+      if (resource.Type === 'AWS::Lambda::Function') {
+        const layers = resource.Properties && resource.Properties.Layers;
+
+        if (Array.isArray(layers) && layers.length > 0) {
+          collection.push({ name: key, layers });
         }
       }
-    }
+
+      return collection;
+    }, []);
   }
 
-  async processLayerARNList(layerARNList) {
-    for (let i = 0 ; i < layerARNList.length ; i++) {
-      const arn = layerARNList[i];
+  async lookupLatestLayerVersionArn(layerArn) {
+    const layer = this.extractLayerArn(layerArn);
 
-      // arn:aws:lambda:REGION:ACCOUNT_ID:layer:LAYER_NAME:LAYER_VERSION
-      const arnParts = arn.split(':');
-      const layerRegion = arnParts[3];
-      const layerVersion = arnParts[7];
-
-      if (layerVersion.toLowerCase() === 'latest' || layerVersion.toLowerCase() === '$latest') {
-        const latestVersionARN = await (async () => {
-          const layerNameArn = arnParts.slice(0, -1).join(":");
-          if (this.cache.has(layerNameArn)) {
-            return this.cache.get(layerNameArn);
-          }
-
-          const latestVersion = await this.getLatestLayerVersion(layerRegion, layerNameArn);
-          const latestArn = [
-            ...arnParts.slice(0, -1),
-            latestVersion,
-          ].join(':');
-          this.cache.set(layerNameArn, latestArn);
-
-          return latestArn;
-        })();
-
-        layerARNList[i] = latestVersionARN;
-        this.log('Replaced %s to %s', arn, latestVersionARN);
-      }
+    if (!layer) {
+      return null;
     }
-  }
 
-  async getLatestLayerVersion(layerRegion, layerName) {
-    const lambda = new Lambda({ region: layerRegion });
+    const lambda = new Lambda({ region: layer.region });
 
     const versions = [];
 
     let marker;
     do {
       const result = await lambda.listLayerVersions({
-        LayerName: layerName,
+        LayerName: layer.layerName,
         Marker: marker,
       }).promise();
 
-      versions.push(...result.LayerVersions.map((v) => v.Version));
+      versions.push(...result.LayerVersions);
       marker = result.NextMarker;
     } while (marker);
 
-    return Math.max(...versions);
+    const sortedVersions = versions.sort((a, b) => {
+      if (a.Version > b.Version) {
+        return -1;
+      } else if (a.Version < b.Version) {
+        return 1
+      } else {
+        return 0;
+      }
+    });
+
+    return sortedVersions.length > 0 ?
+      sortedVersions[0].LayerVersionArn :
+      null;
+  }
+
+  extractLayerArn(arn) {
+    const SEPARATOR = "__SEPARATOR__";
+
+    // arn:aws:lambda:REGION:ACCOUNT_ID:layer:LAYER_NAME:LAYER_VERSION
+    const tokens = arn.replace(/([^:]):([^:])/g, (match, prev, next) => `${prev}${SEPARATOR}${next}`).split(SEPARATOR);
+
+    if (tokens.length !== 8) {
+      return null;
+    }
+
+    let region = tokens[3];
+    if (/AWS::Region/i.test(region)) {
+      region = this.serverless.service.provider.region;
+    }
+
+    const accountId = tokens[4];
+    const layerName = tokens[6];
+
+    return {
+      region,
+      layerName: /AWS::AccountId/i.test(accountId) ?
+        layerName :
+        `arn:aws:lambda:${region}:${accountId}:layer:${layerName}`,
+    };
   }
 
   log(...args) {
-    let formatArgs;
+    const TAG = '[serverless-latest-layer-version]';
 
     if (typeof args[0] === 'string') {
-      formatArgs = [
-        `serverless-latest-layer-version ${args[0]}`,
-        ...args.slice(1),
-      ];
+      args[0] = `${TAG} ${args[0]}`;
     } else {
-      formatArgs = [
-        'serverless-latest-layer-version',
-        ...args,
-      ];
+      args.unshift(TAG);
     }
 
-    this.serverless.cli.log(util.format(...formatArgs));
+    this.serverless.cli.log(util.format(...args));
   }
 }
 
