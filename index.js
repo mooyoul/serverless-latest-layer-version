@@ -12,71 +12,29 @@ class ServerlessPlugin {
   constructor(serverless, options) {
     this.serverless = serverless;
     this.options = options;
+
     this.hooks = {
-      'after:aws:package:finalize:mergeCustomProviderResources': this.updateLayerVersion.bind(this),
+      'after:aws:package:finalize:mergeCustomProviderResources': this.updateCFNLayerVersion.bind(this),
     };
   }
 
-  async updateLayerVersion() {
-    const self = this;
-
+  updateCFNLayerVersion() {
     // Find All Lambda Layer associations from compiled CFN template
-    const layerAssociations = this.listLayerAssociations();
-
-    // Collect target Layer ARNs
-    const collectedLayerARNs = (() => {
-      const set = new Set();
-
-      for (const layerAssociation of layerAssociations) {
-        traverse(layerAssociation.layers).forEach(function (node) {
-          const matched = this.isLeaf
-            && typeof node === "string"
-            && /^arn:/i.test(node)
-            && /latest$/i.test(node);
-
-          if (matched) {
-            set.add(node.toLowerCase());
-          }
-        });
-      }
-
-      return set;
-    })();
-
-    // Resolve actual Layer ARNs
-    const resolvedLayerARNs = await (async () => {
-      const dict = new Map();
-
-      for (const collectedLayerArn of collectedLayerARNs) {
-        const version = await this.lookupLatestLayerVersionArn(collectedLayerArn);
-        dict.set(collectedLayerArn, version);
-      }
-
-      return dict;
-    })();
-
-    // Recursively replace layer ARNs
-    for (const layerAssociation of layerAssociations) {
-      traverse(layerAssociation.layers).forEach(function (node) {
-        const matched = this.isLeaf
-          && typeof node === "string"
-          && /^arn:/i.test(node)
-          && /latest$/i.test(node);
-
-        if (matched) {
-          const resolvedLayerArn = resolvedLayerARNs.get(node.toLowerCase());
-          if (resolvedLayerArn) {
-            this.update(resolvedLayerArn);
-            self.log("Resolved %s to %s", node, resolvedLayerArn);
-          } else {
-            self.log("Detected unknown Layer ARN %s. Please create a new issue to github.com/mooyoul/serverless-latest-layer-version", node);
-          }
-        }
-      });
-    }
+    return this.update(this.listCFNLayerAssociations());
   }
 
-  listLayerAssociations() {
+  async update(layerAssociations) {
+    // Collect target Layer ARNs
+    const collectedLayerARNs = this.collectLayerARNs(layerAssociations);
+
+    // Resolve actual Layer ARNs
+    const resolvedLayerARNs = await this.fetchLatestVersions(collectedLayerARNs);
+
+    // Recursively replace layer ARNs
+    this.replaceLayerVersions(layerAssociations, resolvedLayerARNs);
+  }
+
+  listCFNLayerAssociations() {
     // Lookup compiled CFN template to support individual deployments
     const compiledTemplate = this.serverless.service.provider.compiledCloudFormationTemplate;
 
@@ -91,6 +49,21 @@ class ServerlessPlugin {
         if (Array.isArray(layers) && layers.length > 0) {
           collection.push({ name: key, layers });
         }
+      }
+
+      return collection;
+    }, []);
+  }
+
+  listSLSLayerAssociations() {
+    const { functions } = this.serverless.service;
+
+    return Object.keys(functions).reduce((collection, name) => {
+      const fn = functions[name];
+      const layers = fn.layers;
+
+      if (Array.isArray(layers) && layers.length > 0) {
+        collection.push({ name, layers });
       }
 
       return collection;
@@ -158,6 +131,59 @@ class ServerlessPlugin {
         layerName :
         `arn:aws:lambda:${region}:${accountId}:layer:${layerName}`,
     };
+  }
+
+  collectLayerARNs(layerAssociations) {
+    const set = new Set();
+
+    for (const layerAssociation of layerAssociations) {
+      traverse(layerAssociation.layers).forEach(function (node) {
+        const matched = this.isLeaf
+          && typeof node === "string"
+          && /^arn:/i.test(node)
+          && /latest$/i.test(node);
+
+        if (matched) {
+          set.add(node);
+        }
+      });
+    }
+
+    return set;
+  }
+
+  async fetchLatestVersions(layerARNs) {
+    const dict = new Map();
+
+    for (const layerARN of layerARNs) {
+      const version = await this.lookupLatestLayerVersionArn(layerARN);
+      dict.set(layerARN, version);
+    }
+
+    return dict;
+  }
+
+  replaceLayerVersions(layerAssociations, arnVersionMap) {
+    const self = this;
+
+    for (const layerAssociation of layerAssociations) {
+      traverse(layerAssociation.layers).forEach(function (node) {
+        const matched = this.isLeaf
+          && typeof node === "string"
+          && /^arn:/i.test(node)
+          && /latest$/i.test(node);
+
+        if (matched) {
+          const resolvedLayerArn = arnVersionMap.get(node);
+          if (resolvedLayerArn) {
+            this.update(resolvedLayerArn);
+            self.log("Resolved %s to %s", node, resolvedLayerArn);
+          } else {
+            self.log("Detected unknown Layer ARN %s. Please create a new issue to github.com/mooyoul/serverless-latest-layer-version", node);
+          }
+        }
+      });
+    }
   }
 
   log(...args) {
