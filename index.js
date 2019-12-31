@@ -15,7 +15,13 @@ class ServerlessPlugin {
 
     this.hooks = {
       'after:aws:package:finalize:mergeCustomProviderResources': this.updateCFNLayerVersion.bind(this),
+      'before:deploy:function:deploy': this.updateSLSLayerVersion.bind(this),
     };
+  }
+
+  updateSLSLayerVersion() {
+    // Find All Lambda Layer associations from compiled serverless configuration
+    return this.update(this.listSLSLayerAssociations());
   }
 
   updateCFNLayerVersion() {
