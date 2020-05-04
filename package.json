@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@vingle/commitlint-preset": "1.0.3",
-    "@vingle/semantic-release-config": "1.0.5",
+    "@vingle/semantic-release-config": "2.0.0",
     "husky": "4.2.5"
   },
   "config": {
