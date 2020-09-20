@@ -4,13 +4,13 @@
  * This Serverless plugin replaces 'latest' pseudo version tag to actual latest version
  */
 
-const { Lambda } = require('aws-sdk');
 const traverse = require('traverse');
 const util = require('util');
 
 class ServerlessPlugin {
   constructor(serverless, options) {
     this.serverless = serverless;
+    this.provider = serverless.getProvider("aws");
     this.options = options;
 
     this.hooks = {
@@ -83,16 +83,14 @@ class ServerlessPlugin {
       return null;
     }
 
-    const lambda = new Lambda({ region: layer.region });
-
     const versions = [];
 
     let marker;
     do {
-      const result = await lambda.listLayerVersions({
+      const result = await this.provider.request("Lambda", "listLayerVersions", {
         LayerName: layer.layerName,
         Marker: marker,
-      }).promise();
+      });
 
       versions.push(...result.LayerVersions);
       marker = result.NextMarker;
