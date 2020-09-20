@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/mooyoul/serverless-latest-layer-version/compare/v2.1.0...v2.1.1) (2020-09-20)
+
+
+### Bug Fixes
+
+* use aws credential from serverless internal ([3a79fe0](https://github.com/mooyoul/serverless-latest-layer-version/commit/3a79fe033f44394bb0f58dd5ff2ed4991dcb76a4)), closes [#7](https://github.com/mooyoul/serverless-latest-layer-version/issues/7)
+
 # [2.1.0](https://github.com/mooyoul/serverless-latest-layer-version/compare/v2.0.0...v2.1.0) (2019-12-31)
 
 
