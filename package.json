@@ -27,9 +27,10 @@
     "traverse": "^0.6.6"
   },
   "devDependencies": {
-    "@vingle/commitlint-preset": "1.0.3",
-    "@vingle/semantic-release-config": "1.0.5",
-    "husky": "4.2.5"
+    "@prescott/commitlint-preset": "1.0.2",
+    "@prescott/semantic-release-config": "1.0.1",
+    "husky": "4.3.0",
+    "semantic-release": "17.1.2"
   },
   "config": {
     "commitizen": {
@@ -43,7 +44,7 @@
   },
   "commitlint": {
     "extends": [
-      "@vingle/commitlint-preset"
+      "@prescott/commitlint-preset"
     ]
   }
 }
