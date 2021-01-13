@@ -29,7 +29,7 @@
     "@prescott/commitlint-preset": "1.0.2",
     "@prescott/semantic-release-config": "1.0.1",
     "husky": "4.3.7",
-    "semantic-release": "17.3.1"
+    "semantic-release": "17.3.2"
   },
   "config": {
     "commitizen": {
