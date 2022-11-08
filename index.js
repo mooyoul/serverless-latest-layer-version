@@ -12,7 +12,7 @@ class ServerlessPlugin {
     this.serverless = serverless;
     this.provider = serverless.getProvider("aws");
     this.options = options;
-    this.resolvedLayers = [];
+    this.resolvedLayers = new Set();
 
     this.hooks = {
       'after:aws:package:finalize:mergeCustomProviderResources': this.updateCFNLayerVersion.bind(this),
@@ -183,8 +183,10 @@ class ServerlessPlugin {
           if (resolvedLayerArn) {
             this.update(resolvedLayerArn);
             // Avoid logging the same resolved layer multiple times
-            if (self.resolvedLayers.some(item => item === resolvedLayerArn)) return
-            self.resolvedLayers.push(resolvedLayerArn);
+            if (self.resolvedLayers.has(resolvedLayerArn)) {
+              return;
+            }
+            self.resolvedLayers.add(resolvedLayerArn);
             self.log("Resolved %s to %s", node, resolvedLayerArn);
           } else {
             self.log("Detected unknown Layer ARN %s. Please create a new issue to github.com/mooyoul/serverless-latest-layer-version", node);
