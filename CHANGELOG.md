@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/mooyoul/serverless-latest-layer-version/compare/v2.1.1...v2.1.2) (2022-11-08)
+
+
+### Bug Fixes
+
+* avoid logging the same resolved layer multiple times ([#33](https://github.com/mooyoul/serverless-latest-layer-version/issues/33)) ([33f289f](https://github.com/mooyoul/serverless-latest-layer-version/commit/33f289f1a7902cc8420c63d2f88df9060cfa2476))
+
 ## [2.1.1](https://github.com/mooyoul/serverless-latest-layer-version/compare/v2.1.0...v2.1.1) (2020-09-20)
 
 
