@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@prescott/commitlint-preset": "1.0.6",
-    "@prescott/semantic-release-config": "1.0.5",
+    "@prescott/semantic-release-config": "1.0.6",
     "husky": "4.3.8",
     "semantic-release": "17.4.7"
   },
