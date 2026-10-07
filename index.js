@@ -88,7 +88,7 @@ class ServerlessPlugin {
 
     let marker;
     do {
-      const result = await this.provider.request("Lambda", "listLayerVersions", {
+      const result = await this.listLayerVersions({
         LayerName: layer.layerName,
         Marker: marker,
       });
@@ -110,6 +110,23 @@ class ServerlessPlugin {
     return sortedVersions.length > 0 ?
       sortedVersions[0].LayerVersionArn :
       null;
+  }
+
+  // osls 4 removed the SDK v2 provider.request() proxy and exposes getAwsSdkV3Config() instead.
+  // Serverless Framework 3 and osls 3 only offer provider.request().
+  async listLayerVersions(params) {
+    if (typeof this.provider.getAwsSdkV3Config !== 'function') {
+      return this.provider.request("Lambda", "listLayerVersions", params);
+    }
+
+    const { LambdaClient, ListLayerVersionsCommand } = require('@aws-sdk/client-lambda');
+    if (!this.lambdaClientPromise) {
+      this.lambdaClientPromise = this.provider.getAwsSdkV3Config()
+        .then((config) => new LambdaClient(config));
+    }
+    const client = await this.lambdaClientPromise;
+
+    return client.send(new ListLayerVersionsCommand(params));
   }
 
   extractLayerArn(arn) {
